@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#083b2d" />
+  <title>Owner Admin — Room Rentals</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <meta name="robots" content="noindex, nofollow" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html"><span class="mark">⌂</span> Owner Admin</a>
+      <nav class="nav">
+        <a href="index.html">View site</a>
+        <a href="#" id="logout-link" class="hidden">Sign out</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="config-warning"></div>
+
+    <!-- Login -->
+    <div id="login-view" class="login-box hidden">
+      <div class="panel">
+        <h3>Owner sign in</h3>
+        <p class="hint">Use the admin account you created in Supabase (see README Step 3).</p>
+        <div id="login-error"></div>
+        <form id="login-form">
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required autocomplete="current-password" />
+          </div>
+          <button class="btn" type="submit">Sign in</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dash-view" class="hidden">
+      <div class="admin-tabs">
+        <button data-tab="bookings" class="active">Bookings</button>
+        <button data-tab="rooms">Rooms</button>
+      </div>
+
+      <!-- Bookings tab -->
+      <div id="tab-bookings">
+        <div class="stats-row">
+          <div class="stat-card warn"><strong id="stat-awaiting">–</strong><span>Awaiting payment</span></div>
+          <div class="stat-card ok"><strong id="stat-confirmed">–</strong><span>Confirmed bookings</span></div>
+          <div class="stat-card"><strong id="stat-revenue">–</strong><span>Confirmed revenue</span></div>
+        </div>
+        <div class="notice">
+          <strong>Zelle workflow:</strong> new bookings arrive as <em>Awaiting payment</em>.
+          After you see the money in your Zelle account, click <strong>Confirm payment</strong> —
+          the room is then automatically hidden from the site so it can't be double-booked.
+        </div>
+        <div class="bookings-toolbar">
+          <div class="field">
+            <label for="status-filter">Show</label>
+            <select id="status-filter">
+              <option value="pending_payment">Awaiting payment</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div class="field grow">
+            <label for="booking-search">Search</label>
+            <input id="booking-search" type="search" placeholder="Name, email, reference, room…" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label aria-hidden="true">&nbsp;</label>
+            <button class="btn secondary small" type="button" id="export-csv">Export CSV</button>
+          </div>
+        </div>
+        <div id="bookings-list"><p>Loading bookings…</p></div>
+      </div>
+
+      <!-- Rooms tab -->
+      <div id="tab-rooms" class="hidden">
+        <div class="admin-grid">
+          <div>
+            <div class="panel" style="margin-bottom: 24px;">
+              <h3>Properties</h3>
+              <div id="prop-list"><p class="hint">Loading…</p></div>
+              <form id="prop-form" style="margin-top: 14px;">
+                <div class="field">
+                  <label for="prop-name">New property name</label>
+                  <input id="prop-name" placeholder="e.g. Oak Avenue Duplex" />
+                </div>
+                <div class="field">
+                  <label for="prop-address">Address (optional)</label>
+                  <input id="prop-address" placeholder="Street, town" />
+                </div>
+                <div id="prop-form-error"></div>
+                <button class="btn secondary small" type="submit">Add property</button>
+              </form>
+            </div>
+            <div class="panel">
+              <h3 id="room-form-title">Add a room</h3>
+              <form id="room-form">
+                <input type="hidden" id="room-id" />
+                <div class="field">
+                  <label for="room-property">Property</label>
+                  <select id="room-property" required></select>
+                </div>
+                <div class="field">
+                  <label for="room-name">Room name</label>
+                  <input id="room-name" required placeholder="e.g. Room A — Master bedroom" />
+                </div>
+                <div class="field">
+                  <label for="room-desc">Description</label>
+                  <textarea id="room-desc" rows="3" placeholder="Size, light, bathroom situation…"></textarea>
+                </div>
+                <div class="field">
+                  <label for="room-price">Monthly rent (USD)</label>
+                  <input id="room-price" type="number" min="0" step="1" required />
+                </div>
+                <div class="field">
+                  <label for="room-deposit">Security deposit (USD)</label>
+                  <input id="room-deposit" type="number" min="0" step="1" value="0" />
+                </div>
+                <div class="field">
+                  <label for="room-amenities">Amenities (comma separated)</label>
+                  <input id="room-amenities" placeholder="Furnished, WiFi, Utilities included" />
+                </div>
+                <div class="field">
+                  <label>Photos</label>
+                  <div class="photo-list" id="photo-list"></div>
+                  <input id="room-photos" type="file" accept="image/*" multiple />
+                  <p class="hint">Uploads go to your free Supabase storage.</p>
+                </div>
+                <div class="checkbox-row">
+                  <input type="checkbox" id="room-available" checked />
+                  <label for="room-available" style="margin:0">Available for booking</label>
+                </div>
+                <div id="room-form-error"></div>
+                <button class="btn" type="submit" id="room-save-btn">Save room</button>
+                <button class="btn secondary" type="button" id="room-cancel-btn" style="margin-top:8px">Cancel editing</button>
+              </form>
+            </div>
+          </div>
+          <div>
+            <h3>Your rooms</h3>
+            <div id="rooms-list"><p>Loading rooms…</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

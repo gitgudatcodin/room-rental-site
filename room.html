@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room details — Book your stay</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <meta name="theme-color" content="#083b2d" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html"><span class="mark">⌂</span> <span id="brand-name">Room Rentals</span></a>
+      <nav class="nav">
+        <a href="index.html">← All rooms</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="config-warning"></div>
+    <div id="room-content"><p>Loading room…</p></div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <p><strong id="foot-name">Room Rentals</strong></p>
+        <p id="foot-contact"></p>
+      </div>
+      <div>
+        <p><a href="admin.html">Owner login</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/room.js"></script>
+</body>
+</html>
