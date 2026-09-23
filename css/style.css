@@ -336,6 +336,17 @@ img { max-width: 100%; display: block; }
   transform: translateY(-1px);
 }
 .term-pills input:focus-visible + .pill { outline: 3px solid rgba(13, 92, 70, 0.45); outline-offset: 2px; }
+.term-pills .pill small {
+  display: block; font-weight: 600; font-size: 0.78rem; opacity: 0.75; margin-top: 2px;
+}
+
+/* Admin: per-term price inputs */
+#term-price-fields { display: grid; gap: 10px; }
+.term-price-row { margin-bottom: 0 !important; }
+.term-price-row label { font-size: 0.9rem; }
+.tp-input { display: flex; align-items: center; gap: 8px; }
+.tp-input span { font-weight: 700; color: var(--muted); }
+.tp-input input { max-width: 160px; }
 
 .totals {
   border-top: 1.5px dashed var(--line);
@@ -494,8 +505,25 @@ footer p { margin: 5px 0; font-size: 0.92rem; }
 }
 @media (max-width: 640px) {
   .hero { padding: 72px 0 64px; }
+  .hero h1 { font-size: 2.1rem; }
   .book-box { padding: 24px 20px; }
   .hero-stats { gap: 24px; }
+  /* Stop iOS from auto-zooming when a field is tapped */
+  input, select, textarea { font-size: 16px !important; }
+  /* Comfortable tap targets */
+  .term-pills .pill { padding: 13px 18px; min-height: 48px; }
+  .btn { min-height: 48px; }
+  .admin-tabs { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .admin-tabs button { flex: none; }
+  /* Room cards go single-column and fill the width */
+  .cards { grid-template-columns: 1fr; }
+  .card .photo { aspect-ratio: 16 / 10; }
+  /* Lightbox arrows are thumb-friendly */
+  .lb-prev, .lb-next { width: 52px; height: 52px; font-size: 2rem; }
+  .lb-close { width: 48px; height: 48px; font-size: 1.8rem; }
+  /* Booking totals + admin tables don't overflow */
+  .totals .row { font-size: 0.95rem; }
+  table.data { min-width: 560px; }
 }
 
 /* ============================================================
