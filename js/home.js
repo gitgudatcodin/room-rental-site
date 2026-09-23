@@ -1,6 +1,7 @@
 /* Homepage: listings with search / filter / sort, FAQ contact, live room count. */
 import { SITE, money } from "./config.js";
 import { supabase, guardConfig } from "./db.js";
+import { loadTerms, minRateFor } from "./terms.js";
 
 document.getElementById("brand-name").textContent = SITE.name;
 document.getElementById("foot-name").textContent = SITE.name;
@@ -16,6 +17,7 @@ const esc = (s) =>
 const listingsEl = document.getElementById("listings");
 const filtersEl = document.getElementById("filters");
 let allGroups = [];
+let terms = [];
 
 if (!guardConfig(document.getElementById("config-warning"))) {
   listingsEl.innerHTML = "";
@@ -38,10 +40,14 @@ function paintSkeleton() {
 }
 
 async function loadRooms() {
-  const { data, error } = await supabase
-    .from("properties")
-    .select("id, name, address, rooms(id, name, price_monthly, amenities, photos, is_available)")
-    .order("name");
+  const [{ data, error }, t] = await Promise.all([
+    supabase
+      .from("properties")
+      .select("id, name, address, rooms(id, name, price_monthly, term_prices, amenities, photos, is_available)")
+      .order("name"),
+    loadTerms(),
+  ]);
+  terms = t;
 
   if (error) {
     listingsEl.innerHTML = `<div class="error">Couldn't load rooms: ${esc(error.message)}</div>`;
@@ -76,12 +82,12 @@ function renderFiltered() {
     .map((p) => {
       if (propId && p.id !== propId) return null;
       let rooms = p.rooms.filter((r) => {
-        if (maxPrice && Number(r.price_monthly) > maxPrice) return false;
+        if (maxPrice && minRateFor(r, terms) > maxPrice) return false;
         if (q && !(r.name + " " + p.name).toLowerCase().includes(q)) return false;
         return true;
       });
-      if (sort === "asc") rooms = [...rooms].sort((a, b) => a.price_monthly - b.price_monthly);
-      if (sort === "desc") rooms = [...rooms].sort((a, b) => b.price_monthly - a.price_monthly);
+      if (sort === "asc") rooms = [...rooms].sort((a, b) => minRateFor(a, terms) - minRateFor(b, terms));
+      if (sort === "desc") rooms = [...rooms].sort((a, b) => minRateFor(b, terms) - minRateFor(a, terms));
       return rooms.length ? { ...p, rooms } : null;
     })
     .filter(Boolean);
@@ -122,7 +128,7 @@ function cardHtml(p, r) {
   const tags = (r.amenities || []).slice(0, 4).map((a) => `<span class="tag">${esc(a)}</span>`).join("");
   return `
     <div class="card">
-      <div class="photo">${photo}<span class="price-badge">${money(r.price_monthly)}<small> /mo</small></span></div>
+      <div class="photo">${photo}<span class="price-badge">from ${money(minRateFor(r, terms))}<small> /mo</small></span></div>
       <div class="body">
         <h4>${esc(r.name)}</h4>
         <p class="prop">${esc(p.name)}</p>

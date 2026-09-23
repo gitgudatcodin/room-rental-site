@@ -4,20 +4,20 @@
 
 // 1) Paste your Supabase project credentials here (see README Step 1).
 //    Supabase Dashboard → Project Settings → API
-export const SUPABASE_URL = "https://yykxjlvahryxrnhpftna.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5a3hqbHZhaHJ5eHJuaHBmdG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMTgzNDMsImV4cCI6MjEwNTY5NDM0M30.Vc1M5af-Rcc2Z4xrZZKpKzwyY3AMQh0GjqIeDAPgstU";
+export const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+export const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLISHABLE-KEY";
 
 // 2) Your business details
 export const SITE = {
-  name: "Homewood Room Rentals",
-  tagline: "Affordable, comfortable rooms for rent. Browse, pick your term, and book online in minutes.",
-  contactPhone: "(443) 447-1977",
-  contactEmail: "lellie802@gmail.com",
+  name: "Maple Room Rentals",
+  tagline: "Clean, comfortable rooms for rent. Browse, pick your term, and book online in minutes.",
+  contactPhone: "(555) 123-4567",
+  contactEmail: "you@example.com",
 
   // Where tenants send the Zelle payment. Shown on the booking confirmation page.
   zelle: {
     label: "Zelle",
-    value: "lellie802@gmail.com", // e.g. your phone number or email enrolled with Zelle
+    value: "(555) 123-4567", // e.g. your phone number or email enrolled with Zelle
   },
 
   // Note shown under the Zelle instructions (e.g. how fast you confirm).
@@ -25,6 +25,9 @@ export const SITE = {
 };
 
 // 3) Lease terms tenants can choose from (in months)
+// 3) Lease terms (fallback — the owner manages the real list in
+//    Admin → Rooms → Lease terms; this is used only if that table
+//    isn't set up yet)
 export const TERMS = [
   { months: 1, label: "1 month" },
   { months: 3, label: "3 months" },
@@ -35,7 +38,7 @@ export const TERMS = [
 // 4) Optional parking permit tenants can add at booking time
 export const PARKING_PERMIT = {
   enabled: true,
-  monthlyFee: 20, // USD per month — multiplied by the lease term
+  monthlyFee: 75, // USD per month — multiplied by the lease term
   label: "Parking permit",
 };
 

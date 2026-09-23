@@ -1,7 +1,8 @@
 /* Room detail page: gallery, term picker, booking form, Zelle confirmation. */
-import { SITE, TERMS, PARKING_PERMIT, money } from "./config.js";
+import { SITE, PARKING_PERMIT, money } from "./config.js";
 import { supabase, guardConfig } from "./db.js";
 import { notifyBooking } from "./notify.js";
+import { loadTerms, monthlyRateFor, minRateFor } from "./terms.js";
 
 document.getElementById("brand-name").textContent = SITE.name;
 document.getElementById("foot-name").textContent = SITE.name;
@@ -23,11 +24,10 @@ if (!guardConfig(document.getElementById("config-warning"))) {
 }
 
 async function loadRoom() {
-  const { data: room, error } = await supabase
-    .from("rooms")
-    .select("*, properties(name, address)")
-    .eq("id", roomId)
-    .single();
+  const [{ data: room, error }, terms] = await Promise.all([
+    supabase.from("rooms").select("*, properties(name, address)").eq("id", roomId).single(),
+    loadTerms(),
+  ]);
 
   if (error || !room) {
     contentEl.innerHTML = `<div class="error">Room not found. <a href="index.html">Back to all rooms</a>.</div>`;
@@ -37,10 +37,10 @@ async function loadRoom() {
     contentEl.innerHTML = `<div class="notice"><strong>${esc(room.name)}</strong> is no longer available. <a href="index.html">See other rooms</a>.</div>`;
     return;
   }
-  renderRoom(room);
+  renderRoom(room, terms);
 }
 
-function renderRoom(room) {
+function renderRoom(room, terms) {
   const photos = room.photos && room.photos.length ? room.photos : [];
   const mainPhoto = photos[0]
     ? `<img id="main-photo" src="${esc(photos[0])}" alt="${esc(room.name)}" />`
@@ -66,6 +66,7 @@ function renderRoom(room) {
           <p class="addr">${esc(room.properties?.name || "")}${room.properties?.address ? " · " + esc(room.properties.address) : ""}</p>
           ${room.description ? `<p class="desc">${esc(room.description)}</p>` : ""}
           <div class="amenities" style="display:flex;flex-wrap:wrap;gap:6px">${tags}</div>
+          <p class="hint" style="margin-top:12px">House rule: no pets allowed.</p>
         </div>
       </div>
 
@@ -73,15 +74,15 @@ function renderRoom(room) {
         <div class="book-box">
           <div id="book-form-view">
             <h3>Book this room</h3>
-            <p class="price-line">${money(room.price_monthly)} <small>/ month</small></p>
+            <p class="price-line">from ${money(minRateFor(room, terms))} <small>/ month</small></p>
             ${room.deposit > 0 ? `<p class="hint">Security deposit: ${money(room.deposit)} (due with first payment)</p>` : ""}
 
             <div class="field" style="margin-top:16px">
               <label>Choose your lease term</label>
               <div class="term-pills" id="term-pills">
-                ${TERMS.map((t, i) => `
+                ${terms.map((t, i) => `
                   <label><input type="radio" name="term" value="${t.months}" ${i === 0 ? "checked" : ""} />
-                  <span class="pill">${esc(t.label)}</span></label>`).join("")}
+                  <span class="pill">${esc(t.label)}<small>${money(monthlyRateFor(room, t.months))}/mo</small></span></label>`).join("")}
               </div>
             </div>
 
@@ -186,15 +187,16 @@ function renderRoom(room) {
   const parkingOn = () => PARKING_PERMIT.enabled && parkingBox && parkingBox.checked;
   const currentTotals = () => {
     const months = Number(pills.querySelector("input:checked").value);
-    const rent = Number(room.price_monthly) * months;
+    const rate = monthlyRateFor(room, months);
+    const rent = rate * months;
     const parking = parkingOn() ? Number(PARKING_PERMIT.monthlyFee) * months : 0;
     const deposit = Number(room.deposit || 0);
-    return { months, rent, parking, deposit, total: rent + parking + deposit };
+    return { months, rate, rent, parking, deposit, total: rent + parking + deposit };
   };
   const paintTotals = () => {
-    const { months, rent, parking, deposit, total } = currentTotals();
+    const { months, rate, rent, parking, deposit, total } = currentTotals();
     totalsEl.innerHTML = `
-      <div class="row"><span>Rent (${months} mo × ${money(room.price_monthly)})</span><span>${money(rent)}</span></div>
+      <div class="row"><span>Rent (${months} mo × ${money(rate)})</span><span>${money(rent)}</span></div>
       ${parking > 0 ? `<div class="row"><span>${esc(PARKING_PERMIT.label)} (${months} mo × ${money(PARKING_PERMIT.monthlyFee)})</span><span>${money(parking)}</span></div>` : ""}
       ${deposit > 0 ? `<div class="row"><span>Security deposit</span><span>${money(deposit)}</span></div>` : ""}
       <div class="row grand"><span>Total due via Zelle</span><span>${money(total)}</span></div>`;
@@ -212,7 +214,7 @@ function renderRoom(room) {
     btn.textContent = "Submitting…";
     errEl.innerHTML = "";
 
-    const { months, total } = currentTotals();
+    const { months, rate, total } = currentTotals();
     const payload = {
       room_id: room.id,
       guest_name: contentEl.querySelector("#f-name").value.trim(),
@@ -220,7 +222,7 @@ function renderRoom(room) {
       guest_phone: contentEl.querySelector("#f-phone").value.trim(),
       move_in_date: contentEl.querySelector("#f-date").value,
       term_months: months,
-      monthly_price: room.price_monthly,
+      monthly_price: rate,
       deposit: room.deposit || 0,
       parking_permit: parkingOn(),
       parking_monthly_fee: parkingOn() ? PARKING_PERMIT.monthlyFee : 0,

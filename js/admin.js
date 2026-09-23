@@ -1,8 +1,9 @@
 /* Owner admin: dashboard stats, bookings (confirm Zelle / cancel / search / CSV),
    rooms + photos, and property management. */
-import { money } from "./config.js";
+import { money, TERMS } from "./config.js";
 import { supabase, guardConfig } from "./db.js";
 import { notifyBooking } from "./notify.js";
+import { minRateFor } from "./terms.js";
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,6 +31,7 @@ async function refreshAuth() {
     loadBookings();
     loadProperties();
     loadRoomAdmin();
+    loadTermsAdmin();
   }
 }
 
@@ -242,6 +244,66 @@ document.getElementById("prop-form").addEventListener("submit", async (e) => {
   loadProperties();
 });
 
+/* ---------------- Lease terms ---------------- */
+let adminTerms = [];
+
+async function loadTermsAdmin() {
+  const listEl = document.getElementById("terms-list");
+  try {
+    const { data, error } = await supabase.from("lease_terms").select("*").order("sort_order");
+    if (error) throw error;
+    adminTerms = data || [];
+  } catch {
+    // Table missing (migration not run yet) — fall back to config defaults
+    adminTerms = [];
+    listEl.innerHTML = `<p class="hint">Couldn't load the terms table — did you run <code>migration-term-pricing.sql</code> in Supabase? The site falls back to the default terms until then.</p>`;
+    paintTermPriceFields();
+    return;
+  }
+  listEl.innerHTML = adminTerms.length
+    ? adminTerms.map((t) => `
+      <div class="prop-row">
+        <div><strong>${esc(t.label)}</strong><br/><small style="color:#7d8881">${t.months} month(s)</small></div>
+        <button class="btn small danger" type="button" data-del-term="${t.id}">Delete</button>
+      </div>`).join("")
+    : `<p class="hint">No terms yet — add your first below.</p>`;
+  listEl.querySelectorAll("[data-del-term]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this lease term? Rooms that priced it will fall back to their base rent.")) return;
+      const { error } = await supabase.from("lease_terms").delete().eq("id", btn.dataset.delTerm);
+      if (error) alert("Error: " + error.message);
+      else loadTermsAdmin();
+    })
+  );
+  paintTermPriceFields();
+}
+
+document.getElementById("term-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const months = Number(document.getElementById("term-months").value);
+  const label = document.getElementById("term-label").value.trim();
+  const errEl = document.getElementById("term-form-error");
+  errEl.innerHTML = "";
+  if (!months || !label) { errEl.innerHTML = `<div class="error">Enter both a length and a label.</div>`; return; }
+  const nextOrder = adminTerms.length ? Math.max(...adminTerms.map((t) => t.sort_order)) + 10 : 10;
+  const { error } = await supabase.from("lease_terms").insert({ months, label, sort_order: nextOrder });
+  if (error) { errEl.innerHTML = `<div class="error">${esc(error.message)}</div>`; return; }
+  document.getElementById("term-months").value = "";
+  document.getElementById("term-label").value = "";
+  loadTermsAdmin();
+});
+
+/** Renders the per-term price inputs inside the room form. */
+function paintTermPriceFields() {
+  const el = document.getElementById("term-price-fields");
+  const terms = adminTerms.length ? adminTerms : TERMS;
+  el.innerHTML = terms.map((t) => `
+    <div class="field term-price-row">
+      <label for="tp-${t.months}">${esc(t.label)}</label>
+      <div class="tp-input"><span>$</span><input id="tp-${t.months}" type="number" min="0" step="1" data-term="${t.months}" placeholder="Base rent" /></div>
+    </div>`).join("");
+}
+
 /* ---------------- Rooms ---------------- */
 const roomsList = document.getElementById("rooms-list");
 const roomForm = document.getElementById("room-form");
@@ -262,6 +324,7 @@ async function loadRoomAdmin() {
     return;
   }
 
+  const terms = adminTerms.length ? adminTerms : TERMS;
   roomsList.innerHTML = `
     <div class="data-wrap">
     <table class="data">
@@ -270,7 +333,7 @@ async function loadRoomAdmin() {
         ${rooms.map((r) => `
           <tr>
             <td><strong>${esc(r.name)}</strong><br/><small style="color:#7d8881">${esc(r.properties?.name || "")}</small></td>
-            <td>${money(r.price_monthly)}/mo</td>
+            <td>from ${money(minRateFor(r, terms))}/mo</td>
             <td>${r.is_available ? '<span class="status confirmed">Available</span>' : '<span class="status cancelled">Hidden</span>'}</td>
             <td><div class="row-actions">
               <button class="btn small secondary" data-act="edit" data-id="${r.id}">Edit</button>
@@ -298,6 +361,10 @@ async function startEdit(id) {
   document.getElementById("room-name").value = r.name;
   document.getElementById("room-desc").value = r.description || "";
   document.getElementById("room-price").value = r.price_monthly;
+  document.querySelectorAll("#term-price-fields input[data-term]").forEach((inp) => {
+    const v = r.term_prices?.[inp.dataset.term];
+    inp.value = v != null && v !== "" ? v : "";
+  });
   document.getElementById("room-deposit").value = r.deposit || 0;
   document.getElementById("room-amenities").value = (r.amenities || []).join(", ");
   document.getElementById("room-available").checked = r.is_available;
@@ -367,11 +434,18 @@ roomForm.addEventListener("submit", async (e) => {
       editingPhotos.push(data.publicUrl);
     }
 
+    const termPrices = {};
+    document.querySelectorAll("#term-price-fields input[data-term]").forEach((inp) => {
+      const v = inp.value.trim();
+      if (v !== "" && Number(v) > 0) termPrices[inp.dataset.term] = Number(v);
+    });
+
     const payload = {
       property_id: document.getElementById("room-property").value,
       name: document.getElementById("room-name").value.trim(),
       description: document.getElementById("room-desc").value.trim() || null,
       price_monthly: Number(document.getElementById("room-price").value),
+      term_prices: termPrices,
       deposit: Number(document.getElementById("room-deposit").value || 0),
       amenities: document.getElementById("room-amenities").value.split(",").map((s) => s.trim()).filter(Boolean),
       photos: editingPhotos,
