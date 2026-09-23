@@ -145,3 +145,36 @@ $$;
 
 revoke all on function public.lookup_booking(text, text) from public;
 grant execute on function public.lookup_booking(text, text) to anon, authenticated;
+
+-- ------------------------------------------------------------
+-- Owner-configurable lease terms + per-term room pricing
+-- ------------------------------------------------------------
+create table if not exists lease_terms (
+  id uuid primary key default gen_random_uuid(),
+  months int not null unique,
+  label text not null,
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+
+alter table lease_terms enable row level security;
+
+drop policy if exists "public read lease terms" on lease_terms;
+create policy "public read lease terms" on lease_terms
+  for select using (true);
+
+drop policy if exists "admin all lease terms" on lease_terms;
+create policy "admin all lease terms" on lease_terms
+  for all to authenticated using (true) with check (true);
+
+insert into lease_terms (months, label, sort_order) values
+  (1, '1 month', 10),
+  (3, '3 months', 20),
+  (6, '6 months', 30),
+  (12, '12 months', 40)
+on conflict (months) do nothing;
+
+-- Per-term monthly prices per room, e.g. {"1": 900, "3": 850, "6": 800}.
+-- Blank/missing entries fall back to the room's base price_monthly.
+alter table rooms
+  add column if not exists term_prices jsonb not null default '{}';
