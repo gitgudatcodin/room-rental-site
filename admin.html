@@ -91,6 +91,23 @@
         <div class="admin-grid">
           <div>
             <div class="panel" style="margin-bottom: 24px;">
+              <h3>Lease terms</h3>
+              <p class="hint">The term lengths tenants can choose. Set each room's monthly price per term in the room form below.</p>
+              <div id="terms-list"><p class="hint">Loading…</p></div>
+              <form id="term-form" style="margin-top: 14px;">
+                <div class="field">
+                  <label for="term-months">Length (months)</label>
+                  <input id="term-months" type="number" min="1" step="1" required placeholder="e.g. 9" />
+                </div>
+                <div class="field">
+                  <label for="term-label">Label shown to tenants</label>
+                  <input id="term-label" required placeholder="e.g. 9 months" />
+                </div>
+                <div id="term-form-error"></div>
+                <button class="btn secondary small" type="submit">Add term</button>
+              </form>
+            </div>
+            <div class="panel" style="margin-bottom: 24px;">
               <h3>Properties</h3>
               <div id="prop-list"><p class="hint">Loading…</p></div>
               <form id="prop-form" style="margin-top: 14px;">
@@ -123,8 +140,14 @@
                   <textarea id="room-desc" rows="3" placeholder="Size, light, bathroom situation…"></textarea>
                 </div>
                 <div class="field">
-                  <label for="room-price">Monthly rent (USD)</label>
+                  <label for="room-price">Base monthly rent (USD)</label>
                   <input id="room-price" type="number" min="0" step="1" required />
+                  <p class="hint">Used for any lease term that doesn't have its own price below.</p>
+                </div>
+                <div class="field">
+                  <label>Monthly price per lease term <span style="font-weight:400;color:#7d8881">(optional)</span></label>
+                  <p class="hint">Leave a term blank to use the base rent — e.g. offer a lower monthly rate for longer stays.</p>
+                  <div id="term-price-fields"><p class="hint">Loading terms…</p></div>
                 </div>
                 <div class="field">
                   <label for="room-deposit">Security deposit (USD)</label>

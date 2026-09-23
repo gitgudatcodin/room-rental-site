@@ -4,6 +4,9 @@ A complete booking website for renting out rooms by the room: tenants browse
 rooms and photos, pick a lease term, and book. They pay you via Zelle, and you
 confirm each payment in a private admin panel.
 
+> **Version control:** this project is a git repo. See "Tracking changes with
+> GitHub" below to push it to GitHub and track every change.
+
 **Live pages**
 
 | Page | What it does |
@@ -16,7 +19,7 @@ confirm each payment in a private admin panel.
 
 **How the Zelle flow works**
 
-1. Tenant picks a room + term → total is calculated (rent × months + deposit).
+1. Tenant picks a room + term → total is calculated (monthly rate for that term × months + deposit + optional parking).
 2. Tenant submits name, email, phone, move-in date → booking saved as **Awaiting payment**.
 3. Confirmation screen shows your Zelle number, the exact total, and a booking
    reference code (tenant puts name + code in the Zelle memo).
@@ -70,8 +73,8 @@ Actions cron hitting your site weekly) keeps it awake — ask and I'll set that 
 Open `js/config.js` and fill in:
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (from Step 1)
 - `SITE.name`, contact info, and **your Zelle number/email**
-- `TERMS` — change the lease-term options if you want (e.g. add 9 months)
 - `PARKING_PERMIT` — the monthly parking-permit fee tenants can add at booking (set to $75 — change it to your price). Set `enabled: false` to hide the option entirely.
+- Lease terms and per-term prices are managed in the **admin panel** (Admin → Rooms), not here — see "Customizing" below.
 
 ### Step 5 — Put the site online (free, not on your computer)
 **Cloudflare Pages** (recommended):
@@ -79,6 +82,11 @@ Open `js/config.js` and fill in:
 2. Go to **Workers & Pages → Create → Pages → Upload assets**.
 3. Name it (e.g. `my-room-rentals`), then **drag the entire `room-rental-site`
    folder** (or a zip of it) into the upload box → Deploy.
+   ⚠️ Important: do NOT include the `supabase/` folder in the upload — it holds
+   backend setup files (including a `.ts` file) that belong in Supabase, not on
+   the website, and Cloudflare's uploader will reject the deploy if it sees
+   them. (A ready-to-upload zip with only the website files is included as
+   `room-rental-site-deploy.zip`.)
 4. You get a live URL like `my-room-rentals.pages.dev` instantly. Share that link
    with tenants.
 
@@ -121,8 +129,10 @@ tenant inbox. (Delete the test booking from the admin panel afterwards.)
 
 ## Customizing
 
-- **Lease terms / prices**: edit `TERMS` in `js/config.js`; edit rent per room in the admin panel.
+- **Lease terms**: managed in the admin panel — Admin → Rooms → **Lease terms** (add/delete terms; they appear on every room page). No coding needed.
+- **Price per term**: edit any room in the admin panel — set the base monthly rent plus an optional different monthly price for each term (e.g. $900/mo for 1 month, $800/mo for 12 months). Blank = base rent.
 - **Zelle details**: `SITE.zelle` in `js/config.js`.
+- **Parking fee**: `PARKING_PERMIT` in `js/config.js` (set `enabled: false` to hide it).
 - **FAQ answers**: edit the `<details>` blocks in `index.html` — just change the text, no coding needed.
 - **Colors / branding**: CSS variables at the top of `css/style.css`.
 - **Custom domain** (e.g. `rooms.yourname.com`): Cloudflare Pages → Custom domains → free, takes ~5 minutes with any domain registrar.
@@ -137,8 +147,9 @@ room-rental-site/
 ├── admin.html            # owner admin (login required)
 ├── css/style.css         # all styling
 ├── js/
-│   ├── config.js         # ← EDIT THIS: keys, Zelle, terms, parking fee, contact info
+│   ├── config.js         # ← EDIT THIS: keys, Zelle, contact info, parking fee, email toggle
 │   ├── db.js             # Supabase client
+│   ├── terms.js          # lease-term + per-term pricing helpers
 │   ├── home.js           # homepage logic (filters, FAQ contact)
 │   ├── room.js           # booking flow + photo lightbox
 │   ├── track.js          # booking-status lookup logic
@@ -168,3 +179,30 @@ Cloudflare Turnstile captcha can be added to the booking form in ~30 minutes.
 500 MB holds tens of thousands of bookings; 1 GB holds roughly a thousand
 room photos. If you ever need more, Supabase Pro is $25/mo — but most landlords
 never hit the free limits.
+
+## Tracking changes with GitHub
+
+The project folder is already a git repository with its history committed.
+To keep it on GitHub (version control + backup + a way to deploy from git later):
+
+1. Create a **free** account at [github.com](https://github.com), then create a
+   **new empty repository** (name it e.g. `room-rental-site`). Don't add a
+   README/license — keep it empty.
+2. On your computer, open a terminal in the `room-rental-site` folder and run:
+   ```
+   git remote add origin https://github.com/YOUR-USERNAME/room-rental-site.git
+   git branch -M main
+   git push -u origin main
+   ```
+   (Replace `YOUR-USERNAME` with your GitHub username. GitHub will ask you to
+   sign in the first time.)
+3. From then on, every change is tracked with three commands:
+   ```
+   git add -A
+   git commit -m "Describe what changed"
+   git push
+   ```
+
+Bonus: once the code is on GitHub you can connect the repo to Cloudflare Pages
+(**Create → Pages → Connect to Git**) instead of uploading zips — every `git push`
+then redeploys the site automatically.
